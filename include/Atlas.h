@@ -139,6 +139,8 @@ public:
 
     long unsigned int GetNumLivedMP();
 
+    Map* getMap();
+
 protected:
 
     std::set<Map*> mspMaps;

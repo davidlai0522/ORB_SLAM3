@@ -66,6 +66,15 @@ int main(int argc, char **argv)
     // Stop all threads
     SLAM.Shutdown();
 
+	// Save 3D points as obj file
+	// SLAM.getMap()->Save("cam_map_pts_out.obj");
+    SLAM.GetAtlas()->GetCurrentMap()->Save("cam_map_pts_out.obj");
+
+	// Save 3D points and timestamps of all keyframes they are visible in
+	// SLAM.getMap()->SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
+    SLAM.GetAtlas()->GetCurrentMap()->SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
+
+    // SLAM.
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 

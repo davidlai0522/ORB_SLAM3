@@ -1545,5 +1545,9 @@ string System::CalculateCheckSum(string filename, int type)
     return checksum;
 }
 
+Atlas* System::GetAtlas(){
+    return mpAtlas;
+}
+
 } //namespace ORB_SLAM
 

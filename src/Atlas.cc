@@ -112,6 +112,12 @@ void Atlas::AddMapPoint(MapPoint* pMP)
     pMapMP->AddMapPoint(pMP);
 }
 
+//TODO: Edited
+Map* Atlas::getMap(){
+    // return pMP->GetMap();
+    return 0;
+}
+
 GeometricCamera* Atlas::AddCamera(GeometricCamera* pCam)
 {
     //Check if the camera already exists

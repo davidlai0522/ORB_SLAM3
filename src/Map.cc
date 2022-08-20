@@ -20,6 +20,8 @@
 #include "Map.h"
 
 #include<mutex>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/eigen.hpp>
 
 namespace ORB_SLAM3
 {
@@ -490,5 +492,87 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc/*, map<long u
     mvpBackupMapPoints.clear();
 }
 
+// TODO: Edited
+bool Map::Save(const string &filename) {
+    cout << "Saving map points to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+    cout << "  writing " << mspMapPoints.size() << " map points" << endl;
+    //unsigned long int nbMapPoints = mspMapPoints.size();
+    //fout << nbMapPoints;
+    for (auto mp : mspMapPoints)
+        _WriteMapPointObj(fout, mp);
+    map<MapPoint*, unsigned long int> idx_of_mp;
+    unsigned long int i = 0;
+    for (auto mp : mspMapPoints) {
+        idx_of_mp[mp] = i;
+        i += 1;
+    }
+    fout.close();
+    return true;
+}
+
+bool Map::SaveWithTimestamps(const string &filename) {
+    cout << "Saving map points to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+    cout << "  writing " << mspMapPoints.size() << " map points" << endl;
+    //unsigned long int nbMapPoints = mspMapPoints.size();
+    //fout << nbMapPoints;
+    fout << fixed;
+    for (auto mp : mspMapPoints){
+        _WriteMapPoint(fout, mp, "");
+        // std::map<KeyFrame*, size_t> keyframes = mp->GetObservations_int();
+        map<KeyFrame*, std::tuple<int,int>> keyframes = mp->GetObservations();
+        // for (std::map<KeyFrame*, size_t>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+        for (std::map<KeyFrame*, std::tuple<int,int>>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+            fout << setprecision(6) << " " << it->first->mTimeStamp;
+        }
+        fout << endl;
+    }
+    fout.close();
+    return true;
+}
+
+bool Map::SaveWithPose(const string &filename) {
+    cout << "Saving map points along with keyframe pose to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+    cout << "  writing " << mspMapPoints.size() << " map points" << endl;
+    //unsigned long int nbMapPoints = mspMapPoints.size();
+    //fout << nbMapPoints;
+    fout << fixed;
+    for (auto mp : mspMapPoints){
+        _WriteMapPoint(fout, mp, "");
+        // std::map<KeyFrame*, size_t> keyframes = mp->GetObservations_int();
+        map<KeyFrame*, std::tuple<int,int>> keyframes = mp->GetObservations();
+        // for (std::map<KeyFrame*, size_t>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+        for (std::map<KeyFrame*, std::tuple<int,int>>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+            fout << setprecision(6) << " " << it->first->mTimeStamp;
+        }
+        fout << endl;
+    }
+    fout.close();
+    return true;
+}
+
+void Map::_WriteMapPoint(ofstream &f, MapPoint* mp,
+    const std::string &end_marker) {
+        
+    // cv::Mat wp = mp->GetWorldPos();
+    cv::Mat wp;
+    cv::eigen2cv(mp->GetWorldPos(),wp);
+    f << wp.at<float>(0) << " "; // pos x: float
+    f << wp.at<float>(1) << " "; // pos y: float
+    f << wp.at<float>(2) << end_marker; // pos z: float
+}
+
+void Map::_WriteMapPointObj(ofstream &f, MapPoint* mp,
+    const std::string &end_marker) {
+    // cv::Mat wp = mp->GetWorldPos();
+    cv::Mat wp;
+    cv::eigen2cv(mp->GetWorldPos(),wp);
+    f << "v ";
+    f << wp.at<float>(0) << " "; // pos x: float
+    f << wp.at<float>(1) << " "; // pos y: float
+    f << wp.at<float>(2) << end_marker; // pos z: float
+}
 
 } //namespace ORB_SLAM3

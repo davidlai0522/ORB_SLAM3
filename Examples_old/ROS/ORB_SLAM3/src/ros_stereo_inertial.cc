@@ -84,6 +84,8 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  printf("OpenCV: %s", cv::getBuildInformation().c_str());
+
   std::string sbRect(argv[3]);
   if(argc==5)
   {

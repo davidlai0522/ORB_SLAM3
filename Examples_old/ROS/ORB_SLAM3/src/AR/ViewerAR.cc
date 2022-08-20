@@ -23,6 +23,8 @@
 #include <mutex>
 #include <thread>
 #include <cstdlib>
+#include <Eigen/Dense>
+#include <opencv2/core/eigen.hpp>
 
 using namespace std;
 
@@ -402,7 +404,9 @@ Plane* ViewerAR::DetectPlane(const cv::Mat Tcw, const std::vector<MapPoint*> &vM
         {
             if(pMP->Observations()>5)
             {
-                vPoints.push_back(pMP->GetWorldPos());
+                cv::Mat WorldPos;
+                cv::eigen2cv(pMP->GetWorldPos(),WorldPos);
+                vPoints.push_back(WorldPos);
                 vPointMP.push_back(pMP);
             }
         }
@@ -527,7 +531,8 @@ void Plane::Recompute()
         MapPoint* pMP = mvMPs[i];
         if(!pMP->isBad())
         {
-            cv::Mat Xw = pMP->GetWorldPos();
+            cv::Mat Xw;
+            cv::eigen2cv(pMP->GetWorldPos(),Xw);
             o+=Xw;
             A.row(nPoints).colRange(0,3) = Xw.t();
             nPoints++;

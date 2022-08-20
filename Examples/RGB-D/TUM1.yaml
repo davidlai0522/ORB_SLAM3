@@ -69,3 +69,5 @@ Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500.0
 
+# Save Map
+System.SaveAtlasToFile: /home/david_lai/Documents/fyp/orb_slam3_ws/map/test_map.osa

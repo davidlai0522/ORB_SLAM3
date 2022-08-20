@@ -37,15 +37,22 @@ if(NOT OpenCV_FOUND)
       message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
    endif()
 endif()
+message("OpenCV > 3 found.")
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(PCL REQUIRED)
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/../../../
 ${PROJECT_SOURCE_DIR}/../../../include
 ${PROJECT_SOURCE_DIR}/../../../include/CameraModels
+${PROJECT_SOURCE_DIR}/../../../Thirdparty/Sophus
 ${Pangolin_INCLUDE_DIRS}
 )
 
@@ -67,6 +74,22 @@ src/ros_mono.cc
 target_link_libraries(Mono
 ${LIBS}
 )
+
+# rosbuild_add_executable(Monopub
+# src/ros_mono_pub.cc
+# )
+
+# target_link_libraries(Monopub
+# ${LIBS}
+# )
+
+# rosbuild_add_executable(Monosub
+# src/ros_mono_sub.cc
+# )
+
+# target_link_libraries(Monosub
+# ${LIBS}
+# )
 
 # Node for monocular camera (Augmented Reality Demo)
 rosbuild_add_executable(MonoAR

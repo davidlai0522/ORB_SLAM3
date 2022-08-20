@@ -21,6 +21,9 @@
 #include "KeyFrame.h"
 #include <pangolin/pangolin.h>
 #include <mutex>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
 
 namespace ORB_SLAM3
 {
@@ -163,6 +166,16 @@ void MapDrawer::DrawMapPoints()
     glBegin(GL_POINTS);
     glColor3f(1.0,0.0,0.0);
 
+    // for(set<MapPoint*>::iterator sit=spRefMPs.begin(), send=spRefMPs.end(); sit!=send; sit++)
+    // {
+    //     if((*sit)->isBad())
+    //         continue;
+    //     Eigen::Matrix<float,3,1> pos = (*sit)->GetWorldPos();
+    //     glVertex3f(pos(0),pos(1),pos(2));
+
+    // }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_saved(new pcl::PointCloud<pcl::PointXYZ>());
     for(set<MapPoint*>::iterator sit=spRefMPs.begin(), send=spRefMPs.end(); sit!=send; sit++)
     {
         if((*sit)->isBad())
@@ -170,7 +183,15 @@ void MapDrawer::DrawMapPoints()
         Eigen::Matrix<float,3,1> pos = (*sit)->GetWorldPos();
         glVertex3f(pos(0),pos(1),pos(2));
 
+        //modified by Awei
+        pcl::PointXYZ p;
+        p.x = pos(0);
+        p.y = pos(1);
+        p.z = pos(2);
+        cloud_saved->points.push_back(p);
     }
+    if (cloud_saved->points.size())
+        pcl::io::savePCDFileBinary("map.pcd", *cloud_saved);
 
     glEnd();
 }

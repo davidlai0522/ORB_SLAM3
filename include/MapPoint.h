@@ -120,6 +120,7 @@ public:
     KeyFrame* GetReferenceKeyFrame();
 
     std::map<KeyFrame*,std::tuple<int,int>> GetObservations();
+    // std::map<KeyFrame*, size_t> GetObservations_int();
     int Observations();
 
     void AddObservation(KeyFrame* pKF,int idx);

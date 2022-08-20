@@ -207,6 +207,13 @@ std::map<KeyFrame*, std::tuple<int,int>>  MapPoint::GetObservations()
     return mObservations;
 }
 
+//TODO: edited
+// std::map<KeyFrame*, size_t> MapPoint::GetObservations_int()
+// {
+//     unique_lock<mutex> lock(mMutexFeatures);
+//     return mObservations;
+// }
+
 int MapPoint::Observations()
 {
     unique_lock<mutex> lock(mMutexFeatures);

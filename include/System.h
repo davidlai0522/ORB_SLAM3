@@ -39,6 +39,8 @@
 #include "Viewer.h"
 #include "ImuTypes.h"
 #include "Settings.h"
+// #include "Map.h"
+// #include "MapPoint.h"
 
 
 namespace ORB_SLAM3
@@ -71,6 +73,8 @@ public:
     }
 };
 
+// class Map;
+// class MapPoint;
 class Viewer;
 class FrameDrawer;
 class MapDrawer;
@@ -101,6 +105,10 @@ public:
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    // Map* getMap() {
+	// 	return mpMap;
+	// }
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
     System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true, const int initFr = 0, const string &strSequence = std::string());
 
@@ -186,6 +194,8 @@ public:
 
     float GetImageScale();
 
+    Atlas* GetAtlas();
+
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);
     void InsertResizeTime(double& time);
@@ -262,6 +272,8 @@ private:
     string mStrVocabularyFilePath;
 
     Settings* settings_;
+
+    // Map* mpMap;
 };
 
 }// namespace ORB_SLAM
