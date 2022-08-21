@@ -1549,5 +1549,14 @@ Atlas* System::GetAtlas(){
     return mpAtlas;
 }
 
+void System::SaveAsObj(const string &filename){
+    mpAtlas->GetCurrentMap()->Save(filename);
+}
+
+void System::SaveWithTimestamps(const string &filename){
+
+}
+
+
 } //namespace ORB_SLAM
 
