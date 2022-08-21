@@ -1,11 +1,20 @@
 # ORB-SLAM3
 
-# Documentation about this forked repo
+# Documentation about This Forked Repo
 
-Reference:
-- [ORB-SLAM2](https://github.com/abhineet123/ORB_SLAM2)
+>Reference:
+>- [2D Grid Mapping and Navigation with ORB-SLAM](https://github.com/abhineet123/ORB_SLAM2)  
+>- [pcd to Octomap](https://www.cnblogs.com/gaoxiang12/p/5041142.html)
+>- [ORB-SLAM3 v1.0 compilation problem solved ](https://blog.csdn.net/zhh2005757/article/details/122353772?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-122353772-blog-123881212.pc_relevant_default&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-122353772-blog-123881212.pc_relevant_default&utm_relevant_index=2)
+
+This repo is built when I am doing my final year project. As the statre-of-the-art visual SLAM method, ORB-SLAM3 provides a robust and accurate solution for visual SLAM.
+
+In my project, I am trying to use ORB-SLAM3 for robot navigation. To achieve that, merely SLAM is not enough. It needs to produce an occupancy grid map. Here, I am modifying the source code and trying to produce a useful occupancy grid for navigation instead of the sparse map.
 
 
+
+
+# Documentation from Original Repo
 ### V1.0, December 22th, 2021
 **Authors:** Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, [José M. M. Montiel](http://webdiis.unizar.es/~josemari/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/).
 
