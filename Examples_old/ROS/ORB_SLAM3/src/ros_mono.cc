@@ -65,11 +65,12 @@ int main(int argc, char **argv)
 
     // Stop all threads
     SLAM.Shutdown();
+    cout<< "shutting down all thread\n"<< endl;
 
 	// Save 3D points as obj file
-	// SLAM.getMap()->Save("cam_map_pts_out.obj");
-    SLAM.GetAtlas()->GetCurrentMap()->Save("cam_map_pts_out.obj");
-    SLAM.SaveAsObj("cam_map_pts_out.obj");
+
+    // SLAM.GetAtlas()->GetCurrentMap()->Save("cam_map_pts_out.obj");
+    // SLAM.SaveAsObj("cam_map_pts_out.obj");
 
     // for (MapPoint* each:SLAM.GetAtlas()->GetAllMapPoints()){
 
@@ -78,17 +79,14 @@ int main(int argc, char **argv)
     // SLAM.GetAtlas()->GetAllMapPoints();
     // SLAM.GetAtlas()->mpCurrentMap->Save("cam_map_pts_out.obj");
 
-// vector<Map*> vpMaps = mpAtlas->GetAllMaps();
-    
-
-	// Save 3D points and timestamps of all keyframes they are visible in
-	// SLAM.getMap()->SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
-    SLAM.GetAtlas()->GetCurrentMap()->SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
-    SLAM.SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
-
     // SLAM.
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+
+	// Save 3D points and timestamps of all keyframes they are visible in
+    SLAM.SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
+    // SLAM.GetAtlas()->GetCurrentMap()->SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
+    // SLAM.SaveWithTimestamps("cam_map_pts_and_keyframes.txt");
 
     ros::shutdown();
 
