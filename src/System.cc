@@ -32,6 +32,8 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/eigen.hpp>
 
 namespace ORB_SLAM3
 {
@@ -531,24 +533,49 @@ void System::Shutdown()
     }*/
 
     // Wait until all thread have effectively stopped
-    /*while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+    // while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+    // {
+    //     if(!mpLocalMapper->isFinished())
+    //         cout << "mpLocalMapper is not finished" << endl;
+    //     if(!mpLoopCloser->isFinished())
+    //         cout << "mpLoopCloser is not finished" << endl;
+    //     if(mpLoopCloser->isRunningGBA()){
+    //         cout << "mpLoopCloser is running GBA" << endl;
+    //         cout << "break anyway..." << endl;
+    //         break;
+    //     }
+    //     usleep(5000);
+    // }
+
+    while(!mpLocalMapper->isFinished())
     {
-        if(!mpLocalMapper->isFinished())
-            cout << "mpLocalMapper is not finished" << endl;*/
-        /*if(!mpLoopCloser->isFinished())
-            cout << "mpLoopCloser is not finished" << endl;
-        if(mpLoopCloser->isRunningGBA()){
-            cout << "mpLoopCloser is running GBA" << endl;
-            cout << "break anyway..." << endl;
-            break;
-        }*/
-        /*usleep(5000);
-    }*/
+        cout << "mpLocalMapper is not finished" << endl;
+        usleep(5000);
+    }
+
+    while(!mpLoopCloser->isFinished())
+    {
+        cout << "mpLoopCloser is not finished" << endl;
+        usleep(5000);
+    }
+    while(mpLoopCloser->isRunningGBA())
+    {
+        cout << "mpLoopCloser is running GBA" << endl;
+        usleep(5000);
+    }
+    cout << "break: all thread finished" << endl;
 
     if(!mStrSaveAtlasToFile.empty())
     {
+        cout << "saving atlas" << endl;
         Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
+        cout << "before saving atlas" << endl;
         SaveAtlas(FileType::BINARY_FILE);
+        cout << "after saving atlas" << endl;
+    }
+    else
+    {
+        cout << "mStrSaveAtlasToFile is " << mStrSaveAtlasToFile.empty() << endl;
     }
 
     /*if(mpViewer)
@@ -1549,13 +1576,109 @@ Atlas* System::GetAtlas(){
     return mpAtlas;
 }
 
-void System::SaveAsObj(const string &filename){
-    mpAtlas->GetCurrentMap()->Save(filename);
+// TODO
+// void System::SaveAsObj(const string &filename){
+//     // mpAtlas->GetCurrentMap()->Save(filename);
+//     std::vector<MapPoint*> all_map_pt = mpAtlas->GetAllMapPoints();
+// }
+
+
+void System::SaveAsObj(const string &filename)
+{
+    cout << "Saving map points to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+
+    vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+    std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
+    fout << fixed;
+
+    for(size_t i=0; i<vpMaps.size(); i++)
+    {
+        Map* pM = vpMaps[i];
+
+        for (auto mp : pM->GetMapPoints()){
+            // _WriteMapPointObj(fout, mp);
+            cv::Mat wp;
+            cv::eigen2cv(mp->GetWorldPos(),wp);
+            fout << "v ";
+            fout << wp.at<float>(0) << " "; // pos x: float
+            fout << wp.at<float>(1) << " "; // pos y: float
+            fout << wp.at<float>(2) << "\n"; // pos z: float
+        }
+    }
+
+    fout.close();
 }
 
-void System::SaveWithTimestamps(const string &filename){
 
+// void System::SaveAsObj(const string &filename)
+// {
+//     cout << "Saving map points to " << filename << endl;
+//     ofstream fout(filename.c_str(), ios::out);
+//     // vector<MapPoint*> all_map_points = mpAtlas->GetAllMapPoints();
+//     // cout << "  writing " << all_map_points.size() << " map points" << endl;
+//     //unsigned long int nbMapPoints = mspMapPoints.size();
+//     //fout << nbMapPoints;
+
+//     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+//     std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
+//     for(Map* pMap :vpMaps)
+//     {
+//         std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllMapPoints().size()) << " Map points" << std::endl;
+
+//         // All map points in this atlas
+//         vector<MapPoint*> all_map_points = mpAtlas->GetAllMapPoints();
+
+//         // for (auto each = all_map_points.begin(); each != all_map_points.end(); ++mp){
+//         for (auto mp:all_map_points){
+//             pMap->_WriteMapPointObj(fout, mp);
+//             fout << endl;
+//         }
+
+//     }
+
+//     fout.close();
+// }
+
+void System::SaveWithTimestamps(const string &filename)
+{
+    cout << "Saving map points to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+    // cout << "  writing " << mspMapPoints.size() << " map points" << endl;
+    //unsigned long int nbMapPoints = mspMapPoints.size();
+    //fout << nbMapPoints;
+    fout << fixed;
+
+    vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+
+    std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
+    for(Map* pMap :vpMaps)
+    {
+        std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
+        std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllMapPoints().size()) << " Map points" << std::endl;
+
+        // All map points in this atlas
+        vector<MapPoint*> all_map_points = mpAtlas->GetAllMapPoints();
+
+        // for (auto each = all_map_points.begin(); each != all_map_points.end(); ++mp){
+        for (auto mp:all_map_points){
+            pMap->_WriteMapPoint(fout, mp, "");
+            // std::map<KeyFrame*, size_t> keyframes = mp->GetObservations_int();
+            map<KeyFrame*, std::tuple<int,int>> keyframes = mp->GetObservations();
+            // for (std::map<KeyFrame*, size_t>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+            for (std::map<KeyFrame*, std::tuple<int,int>>::iterator it = keyframes.begin(); it != keyframes.end(); it++) {
+            fout << setprecision(6) << " " << it->first->mTimeStamp;
+            }
+            fout << endl;
+        }
+
+        // }
+    }
+
+    fout.close();
 }
+
+
 
 
 } //namespace ORB_SLAM

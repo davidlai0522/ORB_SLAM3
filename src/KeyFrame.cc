@@ -851,7 +851,6 @@ void KeyFrame::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP, set<GeometricC
     mvBackupMapPointsId.reserve(N);
     for(int i = 0; i < N; ++i)
     {
-
         if(mvpMapPoints[i] && spMP.find(mvpMapPoints[i]) != spMP.end()) // Checks if the element is not null
             mvBackupMapPointsId.push_back(mvpMapPoints[i]->mnId);
         else // If the element is null his value is -1 because all the id are positives

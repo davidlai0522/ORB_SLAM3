@@ -363,6 +363,7 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
     int nMPWithoutObs = 0;
     for(MapPoint* pMPi : mspMapPoints)
     {
+        cout << "Is bad: "<< pMPi->isBad()<<endl;
         if(!pMPi || pMPi->isBad())
             continue;
 
@@ -370,18 +371,33 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
         {
             nMPWithoutObs++;
         }
+        cout<<"before get observation"<<endl;
         map<KeyFrame*, std::tuple<int,int>> mpObs = pMPi->GetObservations();
-        for(map<KeyFrame*, std::tuple<int,int>>::iterator it= mpObs.begin(), end=mpObs.end(); it!=end; ++it)
+        cout<<"after get observation"<<endl;
+        // for(map<KeyFrame*, std::tuple<int,int>>::iterator it= mpObs.begin(), end=mpObs.end(); it!=end; ++it)
+        // {
+        //     if(it->first->GetMap() != this || it->first->isBad())
+        //     {
+        //         cout<<"before erase observation"<<endl;
+        //         pMPi->EraseObservation(it->first);
+        //     }
+        //     cout<<"after erase observation"<<endl;
+
+        // }
+
+        for(map<KeyFrame*, std::tuple<int,int>>::iterator it= mpObs.begin(); it!=mpObs.end(); ++it)
         {
             if(it->first->GetMap() != this || it->first->isBad())
             {
+                cout<<"before erase observation"<<endl;
                 pMPi->EraseObservation(it->first);
             }
-
+            cout<<"after erase observation"<<endl;
         }
     }
 
     // Saves the id of KF origins
+    cout << "Saves the id of KF origins" << endl;
     mvBackupKeyFrameOriginsId.clear();
     mvBackupKeyFrameOriginsId.reserve(mvpKeyFrameOrigins.size());
     for(int i = 0, numEl = mvpKeyFrameOrigins.size(); i < numEl; ++i)
@@ -391,6 +407,7 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
 
 
     // Backup of MapPoints
+    cout << "Backup of MapPoints" << endl;
     mvpBackupMapPoints.clear();
     for(MapPoint* pMPi : mspMapPoints)
     {
@@ -402,6 +419,7 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
     }
 
     // Backup of KeyFrames
+    cout << "Backup of KeyFrames" << endl;
     mvpBackupKeyFrames.clear();
     for(KeyFrame* pKFi : mspKeyFrames)
     {
@@ -511,6 +529,26 @@ bool Map::Save(const string &filename) {
     return true;
 }
 
+bool Map::SaveAll(const string &filename) {
+
+    // vector<MapPoint*> Map::GetAllMapPoints();
+    cout << "Saving map points to " << filename << endl;
+    ofstream fout(filename.c_str(), ios::out);
+    cout << "  writing " << mspMapPoints.size() << " map points" << endl;
+    //unsigned long int nbMapPoints = mspMapPoints.size();
+    //fout << nbMapPoints;
+    for (auto mp : mspMapPoints)
+        _WriteMapPointObj(fout, mp);
+    map<MapPoint*, unsigned long int> idx_of_mp;
+    unsigned long int i = 0;
+    for (auto mp : mspMapPoints) {
+        idx_of_mp[mp] = i;
+        i += 1;
+    }
+    fout.close();
+    return true;
+}
+
 bool Map::SaveWithTimestamps(const string &filename) {
     cout << "Saving map points to " << filename << endl;
     ofstream fout(filename.c_str(), ios::out);
@@ -573,6 +611,11 @@ void Map::_WriteMapPointObj(ofstream &f, MapPoint* mp,
     f << wp.at<float>(0) << " "; // pos x: float
     f << wp.at<float>(1) << " "; // pos y: float
     f << wp.at<float>(2) << end_marker; // pos z: float
+}
+
+std::set<MapPoint*> Map::GetMapPoints(){
+    unique_lock<mutex> lock(mMutexMap);
+    return mspMapPoints;
 }
 
 } //namespace ORB_SLAM3

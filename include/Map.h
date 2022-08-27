@@ -76,6 +76,7 @@ public:
     // new added
     bool Save(const string &filename);
     bool SaveWithTimestamps(const string &filename);
+    bool SaveAll(const string &filename);
     bool SaveWithPose(const string &filename);
 
     void _WriteMapPoint(ofstream &f, MapPoint* mp, const std::string &end_marker = "\n");
@@ -137,6 +138,7 @@ public:
     void ChangeId(long unsigned int nId);
 
     unsigned int GetLowerKFID();
+    std::set<MapPoint*> GetMapPoints();
 
     void PreSave(std::set<GeometricCamera*> &spCams);
     void PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc/*, map<long unsigned int, KeyFrame*>& mpKeyFrameId*/, map<unsigned int, GeometricCamera*> &mpCams);

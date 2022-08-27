@@ -319,6 +319,7 @@ void Atlas::PreSave()
             return elem1->GetId() < elem2->GetId();
         }
     };
+
     std::copy(mspMaps.begin(), mspMaps.end(), std::back_inserter(mvpBackupMaps));
     sort(mvpBackupMaps.begin(), mvpBackupMaps.end(), compFunctor());
 
@@ -333,9 +334,12 @@ void Atlas::PreSave()
             SetMapBad(pMi);
             continue;
         }
+        cout << "before presave"<<endl;
         pMi->PreSave(spCams);
     }
+    cout << "after presave"<<endl;
     RemoveBadMaps();
+    cout << "after remove"<<endl;
 }
 
 void Atlas::PostLoad()
