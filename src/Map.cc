@@ -364,12 +364,9 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
     int nMPWithoutObs = 0;
     for(MapPoint* pMPi : mspMapPoints)
     {
-        if (pMPi==nullptr){
-            cout<< "NULLPTR"<<endl;
-        }
-        else{
-            cout << "Size of " << pMPi << " is " << sizeof(pMPi) <<" with data "<< &pMPi<<endl;
-        }
+
+        cout << "Size of " << pMPi << " is " << sizeof(pMPi) <<" with data "<< &pMPi<<endl;
+        
         if(!pMPi || pMPi->isBad())
             continue;
 

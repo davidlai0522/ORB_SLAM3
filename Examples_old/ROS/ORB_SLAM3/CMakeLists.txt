@@ -75,6 +75,15 @@ target_link_libraries(Mono
 ${LIBS}
 )
 
+rosbuild_add_executable(Mono_publisher
+src/ros_mono_publisher.cc
+)
+
+target_link_libraries(Mono_publisher
+${LIBS}
+)
+
+
 # rosbuild_add_executable(Monopub
 # src/ros_mono_pub.cc
 # )

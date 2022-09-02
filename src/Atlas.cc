@@ -334,12 +334,9 @@ void Atlas::PreSave()
             SetMapBad(pMi);
             continue;
         }
-        cout << "before presave"<<endl;
         pMi->PreSave(spCams);
     }
-    cout << "after presave"<<endl;
     RemoveBadMaps();
-    cout << "after remove"<<endl;
 }
 
 void Atlas::PostLoad()

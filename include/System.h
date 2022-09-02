@@ -197,6 +197,8 @@ public:
     float GetImageScale();
 
     Atlas* GetAtlas();
+    Tracking* GetTracker();
+    LoopClosing* GetLoopCloser();
 
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);
