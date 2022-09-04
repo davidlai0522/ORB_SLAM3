@@ -63,6 +63,8 @@
         "random": "cpp",
         "set": "cpp",
         "string_view": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "core": "cpp",
+        "specialfunctions": "cpp"
     }
 }

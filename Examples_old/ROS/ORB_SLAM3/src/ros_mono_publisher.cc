@@ -43,7 +43,10 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include <opencv2/core/core.hpp>
-
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/opencv.hpp>
 #include "../../../include/System.h"
 
 using namespace std;
@@ -51,23 +54,85 @@ using namespace std;
 class ImageGrabber
 {
 public:
-	ImageGrabber(ORB_SLAM3::System *pSLAM) : mpSLAM(pSLAM)
+	ImageGrabber(ros::NodeHandle *nh, ORB_SLAM3::System *pSLAM) : mpSLAM(pSLAM)
 	{
+		pub_pts_and_pose = nh->advertise<geometry_msgs::PoseArray>("pts_and_pose", 1000);
+		pub_all_kf_and_pts = nh->advertise<geometry_msgs::PoseArray>("all_kf_and_pts", 1000);
+		camera_sub = nh->subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage, this);
+	}
+	void GrabImage(const sensor_msgs::ImageConstPtr &msg)
+	{
+		// Copy the ros image message to cv::Mat.
+		cv_bridge::CvImageConstPtr cv_ptr;
+		try
+		{
+			cv_ptr = cv_bridge::toCvShare(msg);
+		}
+		catch (cv_bridge::Exception &e)
+		{
+			ROS_ERROR("cv_bridge exception: %s", e.what());
+			return;
+		}
+
+		mpSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
+		PublishKFPts(pub_pts_and_pose, pub_all_kf_and_pts, frame_id);
+	}
+	void PublishKFPts(ros::Publisher &pub_pts_and_pose,
+					  ros::Publisher &pub_all_kf_and_pts, int frame_id)
+	{
+		geometry_msgs::PoseArray kf_pt_array;
+		vector<ORB_SLAM3::Map *> vpMaps = mpSLAM->GetAtlas()->GetAllMaps();
+		std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
+		for (ORB_SLAM3::Map *pMap : vpMaps)
+		{
+			std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
+			std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllMapPoints().size()) << " Map points" << std::endl;
+
+			// All map points in this atlas
+			vector<ORB_SLAM3::MapPoint *> all_map_points = mpSLAM->GetAtlas()->GetAllMapPoints();
+
+			for (auto mp : all_map_points)
+			{
+				map<ORB_SLAM3::KeyFrame *, std::tuple<int, int>> keyframes = mp->GetObservations();
+
+				for (std::map<ORB_SLAM3::KeyFrame *, std::tuple<int, int>>::iterator it = keyframes.begin(); it != keyframes.end(); it++)
+				{
+					cv::Mat R;
+					cv::eigen2cv(it->first->GetRotation(), R);
+					R = R.t();
+					vector<float> q = ORB_SLAM3::Converter::toQuaternion(R);
+					cv::Mat twc;
+					cv::eigen2cv(it->first->GetCameraCenter(), twc);
+					geometry_msgs::Pose kf_pose;
+					kf_pose.position.x = twc.at<float>(0);
+					kf_pose.position.y = twc.at<float>(1);
+					kf_pose.position.z = twc.at<float>(2);
+					kf_pose.orientation.x = q[0];
+					kf_pose.orientation.y = q[1];
+					kf_pose.orientation.z = q[2];
+					kf_pose.orientation.w = q[3];
+					kf_pt_array.poses.push_back(kf_pose);
+				}
+			}
+
+			// }
+		}
 	}
 
-	void GrabImage(const sensor_msgs::ImageConstPtr &msg);
-
-	void PublishKFPts(ros::Publisher &pub_pts_and_pose,
-					  ros::Publisher &pub_all_kf_and_pts, int frame_id);
-
+public:
 	ORB_SLAM3::System *mpSLAM;
+
+private:
 	int frame_id;
+	ros::Publisher pub_pts_and_pose;
+	ros::Publisher pub_all_kf_and_pts;
+	ros::Subscriber camera_sub;
 };
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "Mono_publisher");
-	ros::start();
+	// ros::start();
 
 	if (argc != 3)
 	{
@@ -79,14 +144,8 @@ int main(int argc, char **argv)
 
 	// Create SLAM system. It initializes all system threads and gets ready to process frames.
 	ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
-
-	ImageGrabber igb(&SLAM);
-
-	ros::NodeHandle nodeHandler;
-	ros::Publisher pub_pts_and_pose = nodeHandler.advertise<geometry_msgs::PoseArray>("pts_and_pose", 1000);
-	ros::Publisher pub_all_kf_and_pts = nodeHandler.advertise<geometry_msgs::PoseArray>("all_kf_and_pts", 1000);
-	frame_id = 0;
-	ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage, &igb);
+	ros::NodeHandle nh;
+	ImageGrabber igb = ImageGrabber(&nh, &SLAM);
 
 	ros::spin();
 
@@ -106,22 +165,4 @@ int main(int argc, char **argv)
 	ros::shutdown();
 
 	return 0;
-}
-
-void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr &msg)
-{
-	// Copy the ros image message to cv::Mat.
-	cv_bridge::CvImageConstPtr cv_ptr;
-	try
-	{
-		cv_ptr = cv_bridge::toCvShare(msg);
-	}
-	catch (cv_bridge::Exception &e)
-	{
-		ROS_ERROR("cv_bridge exception: %s", e.what());
-		return;
-	}
-
-	mpSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
-	PublishKFPts(pub_pts_and_pose, pub_all_kf_and_pts, frame_id);
 }
