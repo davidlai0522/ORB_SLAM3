@@ -365,7 +365,7 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
     for(MapPoint* pMPi : mspMapPoints)
     {
 
-        cout << "Size of " << pMPi << " is " << sizeof(pMPi) <<" with data "<< &pMPi<<endl;
+        // cout << "Size of " << pMPi << " is " << sizeof(pMPi) <<" with data "<< &pMPi<<endl;
         
         if(!pMPi || pMPi->isBad())
             continue;
