@@ -82,7 +82,6 @@ public:
     void PublishKFPts(ros::Publisher &pub_all_mp_pt,
                       ros::Publisher &pub_all_kf_pt, int frame_id)
     {
-        new_frame_id = frame_id + 1;
         geometry_msgs::PoseArray kf_pt_array;
         // geometry_msgs::PointStamped mp_pt_msg;
         sensor_msgs::PointCloud mp_pt_array;
@@ -105,6 +104,17 @@ public:
             {
                 cv::Mat R;
                 cv::eigen2cv(it->first->GetRotation(), R);
+
+                int rotation[3][3] = {{1,0,0},{0,0,-1},{0,1,0}};
+                int results[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+
+                for (int i = 0; i < 3; i++){
+                    for (int j = 0; j < 3; j++) {
+                        for (int u = 0; u < 3; u++)
+                            results[i][j] += rotation[i][u] * R.at<int>(u,j); //R[u][j];
+                    }
+                }
+
                 R = R.t();
                 vector<float> q = ORB_SLAM3::Converter::toQuaternion(R);
                 cv::Mat twc;
@@ -139,13 +149,42 @@ public:
                     geometry_msgs::Point32 curr_pt;
                     // printf("wp size: %d, %d\n", wp.rows, wp.cols);
                     // pcl_cloud->push_back(pcl::PointXYZ(wp.at<float>(0), wp.at<float>(1), wp.at<float>(2)));
-                    curr_pt.x = pt_pose.at<float>(0);
-                    curr_pt.y = pt_pose.at<float>(1);
-                    curr_pt.z = pt_pose.at<float>(2);
-                    mp_pt_array.header.frame_id = "camera_link";
-                    mp_pt_array.header.seq = new_frame_id;
+                    float point[3] = {pt_pose.at<float>(0),pt_pose.at<float>(1),pt_pose.at<float>(2)};
 
-                    
+                    // rotation about x
+                    float rotation_x[3][3] = {{1,0,0},{0,0,-1},{0,1,0}};
+                    float results_x[3] = {0, 0, 0};
+
+                    for (int i = 0; i < 3; i++){
+                        for (int j = 0; j < 3; j++) {
+                            results_x[i] += rotation_x[i][j] * point[j]; //R[u][j];
+                        }
+                    }
+
+                    // rotation about z
+                    float rotation_z[3][3] = {{0,1,0},{-1,0,0},{0,0,1}};
+                    float results_z[3] = {0, 0, 0};
+
+                    for (int i = 0; i < 3; i++){
+                        for (int j = 0; j < 3; j++) {
+                            results_z[i] += rotation_z[i][j] * point[j]; //R[u][j];
+                        }
+                    }
+
+                    // rotation about y
+                    float rotation_y[3][3] = {{0,0,1},{0,1,0},{-1,0,0}};
+                    float results_y[3] = {0, 0, 0};
+
+                    for (int i = 0; i < 3; i++){
+                        for (int j = 0; j < 3; j++) {
+                            results_y[i] += rotation_y[i][j] * results_x[j]; //R[u][j];
+                        }
+                    }
+
+                    curr_pt.x = results_y[0];
+                    curr_pt.y = results_y[1];
+                    curr_pt.z = results_y[2];
+
                     mp_pt_array.points.push_back(curr_pt);
                 }
             }
@@ -154,11 +193,13 @@ public:
         // n_kf_msg.position.x = n_kf_msg.position.y = n_kf_msg.position.z = n_kf;
         kf_pt_array.poses[0] = n_kf_msg;
         // TODO: check if it should be camera link. OR should put a global frame at the initial starting point
-        kf_pt_array.header.frame_id = "camera_link";
+        kf_pt_array.header.frame_id = "odom";
         kf_pt_array.header.seq = frame_id + 1;
         printf("Publishing keyframe\n");
         pub_all_kf_pt.publish(kf_pt_array);
 
+        mp_pt_array.header.frame_id = "odom";
+        mp_pt_array.header.seq = frame_id + 1;
         printf("Publishing point\n");
         pub_all_mp_pt.publish(mp_pt_array);
         
@@ -255,7 +296,6 @@ public:
 
 private:
     int frame_id;
-    int new_frame_id;
     ros::Publisher pub_all_mp_pt;
     ros::Publisher pub_all_kf_pt;
     ros::Subscriber camera_sub;
