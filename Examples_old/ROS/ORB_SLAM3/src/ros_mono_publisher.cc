@@ -21,6 +21,8 @@
 #include <fstream>
 #include <chrono>
 #include <time.h>
+#include <tf/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include "sensor_msgs/PointCloud2.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -35,11 +37,6 @@
 // #include "MapPoint.h"
 // #include <opencv2/highgui/highgui_c.h>
 // #include <opencv2/highgui/highgui.hpp>
-
-#include <iostream>
-#include <algorithm>
-#include <fstream>
-#include <chrono>
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -60,7 +57,10 @@ public:
     {
         pub_all_mp_pt = nh->advertise<sensor_msgs::PointCloud>("all_mp_pt", 1000);
         pub_all_kf_pt = nh->advertise<geometry_msgs::PoseArray>("all_kf_pt", 1000);
-        camera_sub = nh->subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage, this);
+        // camera_sub = nh->subscribe("/camera/rgb/image_raw", 1, &ImageGrabber::GrabImage, this);
+        camera_sub = nh->subscribe("/camera_right_corrected/color/image_raw", 1, &ImageGrabber::GrabImage, this);
+        // camera_sub = nh->subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage, this);
+        
     }
     void GrabImage(const sensor_msgs::ImageConstPtr &msg)
     {
@@ -82,6 +82,28 @@ public:
     void PublishKFPts(ros::Publisher &pub_all_mp_pt,
                       ros::Publisher &pub_all_kf_pt, int frame_id)
     {
+        first = false;
+        if (first){
+            tf::TransformListener listener;
+            
+            while (true){
+                try{
+                    ros::Time now = ros::Time(0);
+                    listener.waitForTransform("/odom", "/camera_rgb_frame",now, ros::Duration(3.0));
+                    listener.lookupTransform("/odom", "/camera_rgb_frame",now, transform);
+                    cout<< "tranform" << transform.getOrigin().x()<< endl;
+                    cout<< "Rotate"<< transform.getRotation().x()<< endl;
+                    first=false;
+                    break;
+                }
+                catch (tf::TransformException &ex) {
+                    ROS_ERROR("%s",ex.what());
+                    ros::Duration(1.0).sleep();
+                    continue;
+                }
+            }
+        }
+
         geometry_msgs::PoseArray kf_pt_array;
         // geometry_msgs::PointStamped mp_pt_msg;
         sensor_msgs::PointCloud mp_pt_array;
@@ -104,29 +126,41 @@ public:
             {
                 cv::Mat R;
                 cv::eigen2cv(it->first->GetRotation(), R);
-
-                int rotation[3][3] = {{1,0,0},{0,0,-1},{0,1,0}};
-                int results[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-
-                for (int i = 0; i < 3; i++){
-                    for (int j = 0; j < 3; j++) {
-                        for (int u = 0; u < 3; u++)
-                            results[i][j] += rotation[i][u] * R.at<int>(u,j); //R[u][j];
-                    }
-                }
-
                 R = R.t();
                 vector<float> q = ORB_SLAM3::Converter::toQuaternion(R);
                 cv::Mat twc;
                 cv::eigen2cv(it->first->GetCameraCenter(), twc);
                 geometry_msgs::Pose kf_pose;
-                kf_pose.position.x = twc.at<float>(0);
-                kf_pose.position.y = twc.at<float>(1);
-                kf_pose.position.z = twc.at<float>(2);
+
+                // apply rotation (to change frame to ROS from ORB SLAM 3)
+                float point_kf[3] = {twc.at<float>(0),twc.at<float>(1),twc.at<float>(2)};
+                float rotation_kf[3][3] = {{0,0,1},{-1,0,0},{0,-1,0}};
+                float results_kf[3] = {0, 0, 0};
+
+                for (int i = 0; i < 3; i++){
+                    for (int j = 0; j < 3; j++) {
+                        results_kf[i] += rotation_kf[i][j] * point_kf[j];
+                    }
+                }
+
+                tf::Quaternion q_new(transform.getRotation().x()*q[0],transform.getRotation().y()*q[1],transform.getRotation().z()*q[2],transform.getRotation().w()*q[3]);
+                q_new.normalize();
+
+                // kf_pose.position.x = results_kf[0] + transform.getOrigin().x();
+                // kf_pose.position.y = results_kf[1] + transform.getOrigin().y();
+                // kf_pose.position.z = results_kf[2] + transform.getOrigin().z();
+                // kf_pose.orientation.x = q_new.x();
+                // kf_pose.orientation.y = q_new.y();
+                // kf_pose.orientation.z = q_new.z();
+                // kf_pose.orientation.w = q_new.w();
+                kf_pose.position.x = results_kf[0];
+                kf_pose.position.y = results_kf[1];
+                kf_pose.position.z = results_kf[2];
                 kf_pose.orientation.x = q[0];
                 kf_pose.orientation.y = q[1];
                 kf_pose.orientation.z = q[2];
                 kf_pose.orientation.w = q[3];
+
                 kf_pt_array.poses.push_back(kf_pose);
 
                 std::set<ORB_SLAM3::MapPoint *> map_points = it->first->GetMapPoints();
@@ -149,151 +183,50 @@ public:
                     geometry_msgs::Point32 curr_pt;
                     // printf("wp size: %d, %d\n", wp.rows, wp.cols);
                     // pcl_cloud->push_back(pcl::PointXYZ(wp.at<float>(0), wp.at<float>(1), wp.at<float>(2)));
-                    float point[3] = {pt_pose.at<float>(0),pt_pose.at<float>(1),pt_pose.at<float>(2)};
+                    float point_mp[3] = {pt_pose.at<float>(0),pt_pose.at<float>(1),pt_pose.at<float>(2)};
 
-                    // rotation about x
-                    float rotation_x[3][3] = {{1,0,0},{0,0,-1},{0,1,0}};
-                    float results_x[3] = {0, 0, 0};
-
-                    for (int i = 0; i < 3; i++){
-                        for (int j = 0; j < 3; j++) {
-                            results_x[i] += rotation_x[i][j] * point[j]; //R[u][j];
-                        }
-                    }
-
-                    // rotation about z
-                    float rotation_z[3][3] = {{0,1,0},{-1,0,0},{0,0,1}};
-                    float results_z[3] = {0, 0, 0};
+                    // apply rotation (to change frame to ROS from ORB SLAM 3)
+                    float rotation_mp[3][3] = {{0,0,1},{-1,0,0},{0,-1,0}};
+                    float results_mp[3] = {0, 0, 0};
 
                     for (int i = 0; i < 3; i++){
                         for (int j = 0; j < 3; j++) {
-                            results_z[i] += rotation_z[i][j] * point[j]; //R[u][j];
+                            results_mp[i] += rotation_mp[i][j] * point_mp[j];
                         }
                     }
 
-                    // rotation about y
-                    float rotation_y[3][3] = {{0,0,1},{0,1,0},{-1,0,0}};
-                    float results_y[3] = {0, 0, 0};
-
-                    for (int i = 0; i < 3; i++){
-                        for (int j = 0; j < 3; j++) {
-                            results_y[i] += rotation_y[i][j] * results_x[j]; //R[u][j];
-                        }
-                    }
-
-                    curr_pt.x = results_y[0];
-                    curr_pt.y = results_y[1];
-                    curr_pt.z = results_y[2];
-
+                    curr_pt.x = results_mp[0];
+                    curr_pt.y = results_mp[1];
+                    curr_pt.z = results_mp[2];
                     mp_pt_array.points.push_back(curr_pt);
                 }
+
             }
         }
+
         geometry_msgs::Pose n_kf_msg;
         // n_kf_msg.position.x = n_kf_msg.position.y = n_kf_msg.position.z = n_kf;
         kf_pt_array.poses[0] = n_kf_msg;
         // TODO: check if it should be camera link. OR should put a global frame at the initial starting point
-        kf_pt_array.header.frame_id = "odom";
+        kf_pt_array.header.frame_id = "camera_right_link";
         kf_pt_array.header.seq = frame_id + 1;
+        kf_pt_array.header.stamp = ros::Time::now();
         printf("Publishing keyframe\n");
         pub_all_kf_pt.publish(kf_pt_array);
 
-        mp_pt_array.header.frame_id = "odom";
+        mp_pt_array.header.frame_id = "camera_right_link";
         mp_pt_array.header.seq = frame_id + 1;
+        mp_pt_array.header.stamp = ros::Time::now();
         printf("Publishing point\n");
         pub_all_mp_pt.publish(mp_pt_array);
-        
-
-        // ???????????????????????????????????????????????????????????????????????????????????
-        /*
-                int numMaxKFs = 0;
-                ORB_SLAM3::Map *pBiggerMap;
-
-                for (ORB_SLAM3::Map *pMap : vpMaps)
-                {
-                    std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
-                    if (pMap->GetAllKeyFrames().size() > numMaxKFs)
-                    {
-                        numMaxKFs = pMap->GetAllKeyFrames().size();
-                        pBiggerMap = pMap;
-                    }
-                }
-
-                vector<ORB_SLAM3::KeyFrame *> vpKFs = pBiggerMap->GetAllKeyFrames();
-                sort(vpKFs.begin(), vpKFs.end(), ORB_SLAM3::KeyFrame::lId);
-
-                // Transform all keyframes so that the first keyframe is at the origin.
-                // After a loop closure the first keyframe might not be at the origin.
-                Sophus::SE3f Twb; // Can be word to cam0 or world to b depending on IMU or not.
-                Twb = vpKFs[0]->GetPoseInverse();
-
-                // Frame pose is stored relative to its reference keyframe (which is optimized by BA and pose graph).
-                // We need to get first the keyframe pose and then concatenate the relative transformation.
-                // Frames not localized (tracking failure) are not saved.
-
-                // For each frame we have a reference keyframe (lRit), the timestamp (lT) and a flag
-                // which is true when tracking failed (lbL).
-
-                list<ORB_SLAM3::KeyFrame *>::iterator lRit = mpSLAM->GetTracker()->mlpReferences.begin();
-                list<double>::iterator lT = mpSLAM->GetTracker()->mlFrameTimes.begin();
-                list<bool>::iterator lbL = mpSLAM->GetTracker()->mlbLost.begin();
-
-                // cout << "size mlpReferences: " << mpTracker->mlpReferences.size() << endl;
-                // cout << "size mlRelativeFramePoses: " << mpTracker->mlRelativeFramePoses.size() << endl;
-                // cout << "size mpTracker->mlFrameTimes: " << mpTracker->mlFrameTimes.size() << endl;
-                // cout << "size mpTracker->mlbLost: " << mpTracker->mlbLost.size() << endl;
-
-                for (auto lit = mpSLAM->GetTracker()->mlRelativeFramePoses.begin(),
-                          lend = mpSLAM->GetTracker()->mlRelativeFramePoses.end();
-                     lit != lend; lit++, lRit++, lT++, lbL++)
-                {
-                    // cout << "1" << endl;
-                    if (*lbL)
-                        continue;
-
-                    ORB_SLAM3::KeyFrame *pKF = *lRit;
-                    // cout << "KF: " << pKF->mnId << endl;
-
-                    Sophus::SE3f Trw;
-
-                    // If the reference keyframe was culled, traverse the spanning tree to get a suitable keyframe.
-                    if (!pKF)
-                        continue;
-
-                    // cout << "2.5" << endl;
-
-                    while (pKF->isBad())
-                    {
-                        // cout << " 2.bad" << endl;
-                        Trw = Trw * pKF->mTcp;
-                        pKF = pKF->GetParent();
-                        // cout << "--Parent KF: " << pKF->mnId << endl;
-                    }
-
-                    if (!pKF || pKF->GetMap() != pBiggerMap)
-                    {
-                        // cout << "--Parent KF is from another map" << endl;
-                        continue;
-                    }
-
-                    // cout << "3" << endl;
-
-                    Trw = Trw * pKF->GetPose() * Twb; // Tcp*Tpw*Twb0=Tcb0 where b0 is the new world reference
-
-                    // cout << "4" << endl;
-
-                    Sophus::SE3f Twc = ((*lit) * Trw).inverse();
-                    Eigen::Quaternionf q = Twc.unit_quaternion();
-                    Eigen::Vector3f twc = Twc.translation();
-                    // f << setprecision(6) << 1e9 * (*lT) << " " << setprecision(9) << twc(0) << " " << twc(1) << " " << twc(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
-
-                    // cout << "5" << endl;
-                }*/
     }
+    
 
 public:
+    bool first=true;
     ORB_SLAM3::System *mpSLAM;
-
+    tf::StampedTransform transform;
+    
 private:
     int frame_id;
     ros::Publisher pub_all_mp_pt;
